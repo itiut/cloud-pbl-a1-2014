@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+require 'base64'
+require 'cgi'
+require 'openssl'
+require 'open-uri'
+require 'json'
+require 'pp'
+require 'yaml'
+
+yaml = YAML.load_file(File.join(__dir__, 'config.yml'))
+# p yaml
+
+baseurl = yaml['host'] + '/client/api?'
+
+command = ARGV[0] || 'listUsers'
+
+apikey = yaml['apikey']
+secretkey = yaml['secretkey']
+
+request = {
+  command: command,
+  response: 'json',
+  apikey: apikey
+}
+
+request_str = request.sort.map { |key, val| key.to_s + '=' + CGI::escape(val) }.join('&')
+sig_str = request_str.downcase
+
+sig = CGI::escape(Base64.encode64(OpenSSL::HMAC::digest(OpenSSL::Digest::SHA1.new, secretkey, sig_str)).chomp)
+
+# p baseurl
+# p request_str
+# p sig
+
+req = baseurl + request_str + '&signature=' + sig
+# p req
+
+response = open(req)
+jsondoc = JSON.parse(response.read)
+pp jsondoc
